@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HUDdle</title>
+		<style>
+			html, body {
+				background-color: #000;
+			 	margin: 0px;
+			 	padding: 0px;
+			 	overflow: hidden;
+			 	font-family: 'Arial';
+			}
+      input[type=text], input[type=password] {
+				background-color: #222;
+				box-sizing: border-box;
+				border: none;
+				color: #fff;
+        padding: 6px;
+        border-radius: 2px;
+			}
+      input[type=text]:hover, input[type=password]:hover {
+        outline: none;
+        background-color: #111;
+			}
+      input[type=text]:focus, input[type=password]:focus {
+        outline: 1px solid rgb(85, 0, 20);
+        background-color: #111;
+			}
+      button {
+        background-color: rgb(85, 0, 20);
+        border: none;
+        padding: 6px;
+        color: #ffd7e7;
+        font-weight: bold;
+        border-radius: 2px;
+        cursor: pointer;
+      }
+      button:hover {
+        color: #fff;
+        background-color: rgb(59, 2, 15);
+      }
+			.ui {
+				position: absolute;
+				width: 100vw;
+				height: 100dvh;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				gap: 5px;
+				background-color: #000;
+				padding: 5px;
+				box-sizing: border-box;
+			}
+			.chatlog-style {
+			  display: flex;
+			  flex-direction: column-reverse;
+				flex-grow: 1;
+				gap: 3px;
+				background-color: #000;
+				box-sizing: border-box;
+				overflow-y: scroll;
+			}
+			.chatmessage {
+			  background-color: #111;
+			  color: #ddd;
+			  padding: 1px;
+			}
+			.systemmessage {
+			  background-color: #100;
+			  color: #ddd;
+			  padding: 1px;
+			  opacity: 0.6;
+			}
+			.name {
+			  display: inline-block;
+			  color: #bbb;
+			  padding-right: 4px;
+			  min-width: 80px;
+			}
+			.message {
+				color: #fff;
+			}
+      .login-overlay {
+				position: absolute;
+				width: 100vw;
+				height: 100dvh;
+        left: 0px;
+        top: 0px;
+        background-color: rgba(0,0,0,0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+      .connection-state-overlay {
+				position: absolute;
+				width: 100vw;
+				height: 100dvh;
+        left: 0px;
+        top: 0px;
+        background-color: rgba(0,0,0,0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        opacity: 0.0;
+        pointer-events: none;
+        transition: all 0.2s;
+        color: #fff;
+        font-size: 16px;
+      }
+      .connection-state-overlay-visible {
+        opacity: 1.0;
+        pointer-events: auto;
+      }
+      .login-form {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: stretch;
+        max-width: 400px;
+        gap: 4px;
+      }
+		</style>
+		<script>
+
+    let socket = null;
+    let connected = false;
+    let user = null;
+    let users = [];
+    let messages = [];
+    let activeChannel = null;
+
+    function setConnectionState(state) {
+      connected = state;
+      if(connected) {
+        document.getElementById('connection-state-overlay').classList.remove('connection-state-overlay-visible')
+      } else {
+        document.getElementById('connection-state-overlay').classList.add('connection-state-overlay-visible')
+      }
+    }
+
+    function setUser(user) {
+      this.user = user;
+    }
+
+    function sendCommand(name, data = {}) {
+      socket.send(JSON.stringify({cmd: name, data}));
+    }
+
+    function sendChatMessage(message) {
+      sendCommand("chat_message", { message });
+    }
+
+    function login(username, password) {
+      sendCommand("login", { username, password });
+    }
+
+    function logout(username, password) {
+      sendCommand("logout");
+    }
+
+    function processServerCommand(name, data) {
+      if(name === 'system_message') addSystemMessage(data.message);
+      if(name === 'chat_message') addChatMessage(data.user, data.message);
+      if(name === 'login_success') setUser(user);
+    }
+
+    function loginSuccess(user) {
+      setUser(user);
+    }
+
+    function addChatMessage(user, message) {
+      messages.push({type: 'chat_message', user, message});
+      updateMessageUI();
+		}
+
+    function addSystemMessage(message) {
+      messages.push({type: 'system_message', message});
+      updateMessageUI();
+    }
+
+    function updateUI() {
+
+    }
+
+    function updateMessageUI() {
+      for(let message of messages) {
+				const chatlog = document.getElementById('chatlog');
+        if(message.type === 'chat_message') {
+          let user = this.users.find(o => o.id === message.user.id);
+          let displayName = user.displayName;
+          let messageContent = message.message;
+  				if (!chatlog) return;
+  				const chatMessage = document.createElement('div');
+  				chatMessage.className = 'chatmessage';
+  				const nameSpan = document.createElement('span');
+  				nameSpan.className = 'name';
+  				nameSpan.textContent = displayName + ': ';
+  				const messageSpan = document.createElement('span');
+  				messageSpan.className = 'message';
+  				messageSpan.textContent = messageContent;
+  				chatMessage.appendChild(nameSpan);
+  				chatMessage.appendChild(messageSpan);
+  				chatlog.prepend(chatMessage);
+        }
+        if(message.type === 'system') {
+  				const chatMessage = document.createElement('div');
+  				chatMessage.className = 'systemmessage';
+  				chatMessage.textContent = message;
+  				chatlog.prepend(chatMessage);
+        }
+      }
+    }
+
+    function setupUI() {
+
+      // Add Chat input event listener
+			document.getElementById('chatinput').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            let message = document.getElementById("chatinput").value
+            if(message.startsWith('/setname ')) {
+              userName = message.split("/setname ")[1];
+              localStorage.setItem("savedNickname", userName);
+            }
+            sendMessage(message);
+            document.getElementById("chatinput").value = "";
+					}
+			});
+
+      let loginHandler = () => {
+        let username = document.getElementById('usernameInput').value;
+        let password = document.getElementById('passwordInput').value;
+        login(username, password);
+      }
+
+      document.getElementById('loginButton').addEventListener('click', () => loginHandler());
+      document.getElementById('usernameInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') loginHandler(); });
+      document.getElementById('passwordInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') loginHandler(); });
+
+    }
+
+    function connect() {
+      socket = new WebSocket(`ws://${window.location.hostname}:16969`);
+      console.log("Connecting...");
+
+      socket.onopen = (event) => {
+        setConnectionState(true);
+  		}
+
+  		socket.onmessage = (event) => {
+        try {
+          let command = JSON.parse(event.data)
+          processServerCommand(command.name, command.data);
+        } catch(e) {
+          console.error(e);
+        }
+  		};
+
+  		socket.onerror = (error) => {
+        socket.close();
+  			console.error("WebSocket error:", error);
+  		};
+
+  		socket.onclose = () => {
+        setConnectionState(false);
+  			console.log("WebSocket connection closed");
+        connect();
+  		};
+    }
+
+		window.onload = function() {
+      connect();
+      setupUI();
+		}
+
+
+		</script>
+	</head>
+
+	<body>
+		<div class="ui">
+			<div id="chatlog" class="chatlog-style">
+			</div>
+			<input id="chatinput" type="text">
+			</input>
+		</div>
+    <div class="login-overlay">
+      <div class="login-form">
+        <input id="usernameInput" type="text" placeholder="Username..."></input>
+        <input id="passwordInput" type="password" placeholder="Password..."></input>
+        <button id="loginButton">Login</button>
+      </div>
+    </div>
+    <div class="connection-state-overlay connection-state-overlay-visible" id="connection-state-overlay">
+      Connecting..
+    </div>
+	</body>
+
+</html>

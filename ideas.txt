@@ -1,0 +1,44 @@
+
+Type '/help' for list of commands
+---------------------------------------------------------
+(-) > 
+---------------------------------------------------------
+
+
+---------------------------------------------------------
+($Channel) >
+---------------------------------------------------------
+
+
+---------------------------------------------------------
+(@User) >
+---------------------------------------------------------
+
+
+Commands:
+/help                               - List commands
+/logout                             - Logout of current user account
+/nickname <New Name>                - Set Nickname
+/user_create <Username> <Password>  - Create a user
+/user_delete <Username>             - Remove a user account
+/user_passwd <Username> <Password>  - Update a user's password
+/user_nickname <Username> <Nickname>- Update a user's nickname
+/add <Username>                     - Add a user as a friend
+/remove <Username>                  - Remove a user as a friend
+/im <Username>                      - Switch to IMing a User
+/hangup                             - No longer IMing to any user
+/friends                            - List your friends
+/whoami                             - Tells you who you are
+/accept                             - Accept an invite (friends or channel)
+/decline                            - Decline an invite (friends or channel)
+/channels                           - List the channels you're a member of
+/channel                            - Show the channel 'About' and list current users in it.
+/channel_enter <Channel ID>         - Switch to a channel
+/channel_leave                              
+/channel_about <Text>                - Update the 'about'
+/channel_create <ID>                - Create a channel
+/channel_invite <Username>          - Invite a user to a channel
+/channel_delete <ID>                
+/channel_add_admin <Username>            - Make a user an admin for the channel
+/channel_remove_admin <Username>         - Remove a user as an admin for a channel
+/channel_kick <Username>
