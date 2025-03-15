@@ -33,8 +33,9 @@ Commands:
 /decline                            - Decline an invite (friends or channel)
 /channels                           - List the channels you're a member of
 /channel                            - Show the channel 'About' and list current users in it.
-/channel_enter <Channel ID>         - Switch to a channel
-/channel_leave                              
+/channel_switch <Channel ID>        - Exit the current channel and enter another one
+/channel_enter <Channel ID>         - Enter a channel without leaving the current one
+/channel_exit <Channel ID>          - Exit the current channel or a specific one                              
 /channel_about <Text>                - Update the 'about'
 /channel_create <ID>                - Create a channel
 /channel_invite <Username>          - Invite a user to a channel
