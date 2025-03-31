@@ -1,0 +1,16 @@
+Shift + Alt + Ctrl + Space
+
+Features
+	- Press hotkey to bring chat hud to foreground, make it opaque, steal focus, put cursor in input box.
+	- When messages come in, makee them appear in a small chat log window that is only as big as it needs to be.
+		The box can be resized, and messages can be scrolled with mouse wheel or page up/down.
+	- Press @ and start typing a username to IM someone directly.
+	- Type # and a channel name to switch channels.
+	- Only the most minimal amount of the UI visible is displayed when messages are received, and the UI ignores
+	  all mouse clicks. But when the hot key is pressed, the HUD becomes more opaque.
+	- When the chat window is focused, pressing ESC forces it to defocus and ignore input again.
+	- Pressing tab while in the main window, toggles expanding the UI to be larger
+	- In large mode, a side bar on the left displays a list of friends and channels that can be switched to,
+		window becomes bigger, and centered, with UI controls visible for performing more advanced actions
+	- The input bar shows the current target of chat window (@Username / #Channel)
+	- Text commands available for all chat functions

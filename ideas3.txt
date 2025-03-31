@@ -1,0 +1,141 @@
+Logic...
+
+	server starts...
+
+	clients connect..
+
+	protocol handlers need to act as adapters between server logic and communicating with clients..
+
+	So, the ProtocolHandlers need to be able to receive commands from the client, and receive events from the connections themselves.
+
+	So it looks something like this...
+
+	index.js is the entry point
+
+	AppConfig.js is responsible for being an abstraction layer over server settings
+	and is a singleton, importable from anywhere, and makes it easy to get/set settings,
+	and automatically saves/loads settings. It has a schema it can apply to data loaded
+	from config file, to ensure whatever data is loaded will conform with expected types.
+
+	DataStorage.js can act as an abstraction layer over the data storage system for
+	storing all the data the server manages. It can present models of data types with
+	methods for creating/deleting/updating/fetching/searching data.
+
+	HUDdleServer.js can act as the hub of server logic, with methods for creating/deleting
+	users, adding messages, creating channels, etc. It interacts with DataStorage. It
+	can provide an interface for handling events from connected clients and timers, etc.
+
+	WebUIServer.js can be responsible for providing a web based UI for the server. This
+	could be used for management/admin of the server, as well as providing a web based
+	interface to the server for connecting without having a client installed.
+
+	WSServer.js is responsible for setting up web sockets, and sending events to the
+	HUDdleServer when clients do things. It's also responsible for creating WSConnection
+	objects for each connecting, which are responsible for receiving client commands
+	and processing them.
+
+	The WSConnections process commands up to the point of receiving a handshake on a
+	protocol selection. Once that is received, the appropriate protocol handler can be
+	used from protocols/version_N/ProtocolHandlerVersionN.js.
+
+	ProtocolHandlers are responsible for taking commands and interpretting them, then
+	translating them into events that can be fired on the HUDdleServer. Events such as the
+	event of a client sending a chat message. It's up to the HUDdleServer to decide how to
+	process this event, and if it will process it at all. This allows for example, for a
+	a protocol handler to send the appropriate events to the server for a client trying to
+	use an old discontinued feature, and for the server to just ignore that, and send back
+	a response like 'We don't do that any more', for the protocol handler to then reply to
+	the client with an appropriate 'failure' command.
+
+	This gives us a few utility classes like EventDispatcher which can be used in anything
+	which is event based.
+
+	And CommandProcessor which can take care of loading multiple commands from a folder
+	path and processing the appropriate command depending on the json received.
+
+	We also need to store the concept of a 'ClientSession' too, because a connection will
+	need to store these, and if a client reconnects to an existing session, then we need to
+	be able to reload a session too, and we need to know if a session is already in use.
+
+	So lets say we have a running server, and a client wants to send a chat message.
+	What does that look like?
+
+	Client sends text to server, something like,
+	{ cmd: "send_chat_message", id: .., rt: ..., data: { conversationId: ..., message: ... } }
+
+	That's received by WSConnection. Which by that point would have selected a ProtocolHandler.
+	The message can be sent to the protocol handler, which can then check if the text is a
+	valid command, and if it is then it can process it with an appropriate command handler.
+	The command handler would be something like 'send_chat_message.js', and it would need
+	to have a reference to the HUDdleServer, so it could create an event. Something like..
+
+	huddleServer.v1.sendChatMessage({fromUserId, toConversationId, message}) ?
+
+	The huddleServer will clearly need to operate as some kind of fixed version..
+
+	So for example if the version of the server is 3.4, and it's operating version 9 of the
+	protocol. That version may have added and removed some features, as well as added
+	requirements for certain functions that earlier clients didn't have...
+
+	It will be necessary for the server to specify what versions of the protocol it
+	supports, and forr that information to go to the WSConnections too.. and necessary
+	for each of the supported interfaces to be available to the protocol handlers.
+
+	Then lets say huddleServer.v1.sendChatMessage takes that data, forwards it to a general
+	purpose sendChatMessage, like huddleServer.sendChatMessage, with the appropriate args,
+	what then?
+
+	Well the server will likely need to use the DataStorage to make sure the conversation
+	exists, make sure the user exists, etc, do a bunch of validation. And respond with
+	some kind of status on the request. That'll have to go to the huddleServer.v1.send..
+	so it can send an appropriate response back to the protocolhandler. And so it can
+	send a response back to the client.
+
+	Lets say the message is added to the data storage, that means we'll need some kind of
+	event for 'chat_message' which can be detected by the server. And then handle, so for
+	example, will need to then check which clients are connected, and if any of them are
+	logged in as users participating in that conversation, and distribute the message to
+	all of them.
+
+  But at that point the event could be coming from a protocol 9 server and need to go
+  out to clients running protocol 9, 8, 7 and 6. So somehow the protocol handlers need
+  to receive these events in a way that is shaped for them. Maybe it can be the responsibility
+  of the huddle server event handler to check the protocol handler version and call the
+  appropriate function. That way we keep the protocol handlers fairly dumb and it's the
+  server which is handling the different protocol versions instead.
+
+  Or maybe there can be some kind of adapter layer here. So the server sends a message
+  to ServerToClientAdapterProtocolVersion9 (or some other better name) that is responsible
+  for translating that into something the ProtocolHandler expects.
+  This could then potentially be part of the ProtocolHandler itself.
+
+  So what I'm thinking is we need a kinda.. wrapper...
+
+  Like you make a HUDdleServer, but then if you want to give that server to a client
+  connected with protocol 8, while the server is running protocol 9, you wrap
+  the server in something like a Server9ForProtocol8Adapter(huddleServer).
+  And that has all the methods that a protocol handler on version 8 would expect, and
+  it translates them to protocol 9. Likewise for the protocol handler then,
+  you'd have a Protocol8ForServer9AdapterprotocolHandler), that has all of the methods that
+  a protocol 9 server would expect, but maps them to the protocol 8 handler.
+
+  Ideally the goal here is, if we add new versions of the protocol and expand the sevrer
+  with new functionality and new commands, maintaining support for old versions of the
+  protocol should ideally involve minimal if any changes of code to the existing protocol
+  handlers as possible.
+
+  What's needed is probably some kind of system of layers of upgrade/downgrade.
+
+  So like, lets say a message comes from a protocol 7 client. There could be a series of
+  upgraders. Like it starts with the protocol 9 upgrader that gets the first pass to
+  upgrade the message to protocol 9 level. If it passes, then the protocol 8 upgrader
+  gets a chance instead. And if protocol 8 passes, then the message arrives as it was
+  originally sent.
+
+  Then lets say the message is going to a client from the server. It could start with
+  a protocol 9 downgrader which gets a chance to downgrade a message to a specific
+  protocol version, and format. If it passes, then the protocol 8 downgrader gets a
+  chance to do so instead. Otherwise the message goes straight to the protocol 7.
+
+  That way, all previous efforts at downgrading/upgrading protocol messages can be
+  reused and new upgrade/downgrade efforts can be simply added on top of that.
