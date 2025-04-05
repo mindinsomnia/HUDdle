@@ -22,10 +22,4 @@ export default class WSServer {
     this.serverEventDispatcher.emit('disconnected', this, connection);
   }
 
-  sendToAll(command) {
-    for(const connection of this.connections) {
-      connection.sendCommand(command);
-    }
-  }
-
 }

@@ -1,20 +1,13 @@
-import Joi from 'joi';
+import configSchema from './configSchema.js';
 import getAppDataPath from './helper/getAppDataPath.js';
 import fs from 'fs';
 
-const appConfigSchema = Joi.object({
-  webPort: Joi.number().integer().min(1024).max(65535).default(6969).optional(),
-  wsPort: Joi.number().integer().min(1024).max(65535).default(16969).optional(),
-  cacheUIHTMLFile: Joi.boolean().default(false).optional(),
-  adminUsername: Joi.string().default("admin").optional(),
-  adminPassword: Joi.string().default("password").optional()
-}).unknown(true);
 const CONFIG_FILEPATH = getAppDataPath("config.json");
 
-class AppConfig {
+class Config {
 
   constructor() {
-    this.configuration = appConfigSchema.validate({}).value;
+    this.configuration = configSchema.validate({}).value;
     this.load();
   }
 
@@ -25,7 +18,7 @@ class AppConfig {
   }
 
   validate() {
-    this.configuration = appConfigSchema.validate(this.configuration).value;
+    this.configuration = configSchema.validate(this.configuration).value;
   }
 
   get(property) {
@@ -45,7 +38,7 @@ class AppConfig {
     try {
       let configFileText = fs.readFileSync(CONFIG_FILEPATH, { encoding: 'utf8' });
       let configData = JSON.parse(configData);
-      this.configuration = appConfigSchema.validate(configData).value;
+      this.configuration = configSchema.validate(configData).value;
     } catch(e) {
       console.error(e);
       console.error("Could not save app configuration.");
@@ -56,6 +49,6 @@ class AppConfig {
 
 }
 
-const appConfig = new AppConfig();
+const config = new Config();
 
-export default appConfig;
+export default config;
